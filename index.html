@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d18">
+  <title>Pong — Una partida más</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #090d18;
+      color: #edf2ff;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 28px 18px;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(32, 47, 79, .37), transparent 58%),
+        #090d18;
+    }
+
+    .game { width: min(100%, 900px); }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 2px 18px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(105, 240, 197, .35);
+      border-radius: 13px;
+      color: #69f0c5;
+      font-size: 19px;
+      font-weight: 900;
+      box-shadow: inset 0 0 20px rgba(105, 240, 197, .08);
+    }
+
+    h1 { margin: 0; font-size: 19px; letter-spacing: -.04em; }
+    .subtitle { margin: 3px 0 0; color: #7e8ba6; font-size: 12px; }
+
+    .best {
+      padding: 8px 12px;
+      border: 1px solid #222c40;
+      border-radius: 10px;
+      color: #9aa8c2;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .best strong { color: #f5c96b; font-variant-numeric: tabular-nums; }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 12px 24px;
+      border: 1px solid #1d2739;
+      border-bottom: 0;
+      border-radius: 16px 16px 0 0;
+      background: #101725;
+    }
+
+    .player { display: flex; align-items: center; gap: 10px; }
+    .player:last-child { justify-content: flex-end; text-align: right; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #69f0c5; box-shadow: 0 0 12px #69f0c5; }
+    .dot.cpu { background: #ff7189; box-shadow: 0 0 12px #ff7189; }
+    .name { color: #b7c1d5; font-size: 12px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; }
+    .score { min-width: 24px; color: #f2f5fc; font-size: 20px; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .versus { color: #536078; font-size: 10px; font-weight: 700; letter-spacing: .15em; }
+
+    .court-wrap {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #1d2739;
+      background: #0c1320;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .35);
+    }
+
+    canvas { display: block; width: 100%; aspect-ratio: 16 / 9; touch-action: none; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      background: rgba(8, 13, 23, .6);
+      backdrop-filter: blur(5px);
+      text-align: center;
+      transition: opacity .2s ease, visibility .2s ease;
+    }
+
+    .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .card { max-width: 360px; }
+    .eyebrow { margin: 0 0 10px; color: #69f0c5; font-size: 10px; font-weight: 750; letter-spacing: .18em; text-transform: uppercase; }
+    .card h2 { margin: 0; font-size: clamp(24px, 5vw, 36px); letter-spacing: -.05em; }
+    .card p:not(.eyebrow) { margin: 10px 0 20px; color: #a4afc4; font-size: 13px; line-height: 1.6; }
+    .teacher-unlock { margin-top: 16px; }
+    .teacher-unlock[hidden] { display: none; }
+    .teacher-unlock label { display: block; margin-bottom: 8px; color: #9aa8c2; font-size: 11px; }
+    .teacher-unlock input {
+      width: 100%;
+      min-height: 42px;
+      margin-bottom: 8px;
+      padding: 0 12px;
+      border: 1px solid #344057;
+      border-radius: 9px;
+      background: #101725;
+      color: #edf2ff;
+      font: inherit;
+      font-size: 13px;
+      text-align: center;
+    }
+    .teacher-unlock input:focus-visible { outline: 2px solid #69f0c5; outline-offset: 2px; }
+    .teacher-unlock p { min-height: 16px; margin: 6px 0 0 !important; color: #ff9aa9 !important; font-size: 11px !important; }
+
+    button {
+      min-height: 44px;
+      padding: 0 22px;
+      border: 0;
+      border-radius: 11px;
+      background: #69f0c5;
+      color: #07130f;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 750;
+      cursor: pointer;
+      transition: transform .15s ease, background .15s ease;
+    }
+
+    button:hover { transform: translateY(-2px); background: #8af7d5; }
+    button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px 20px;
+      padding: 13px 16px;
+      border: 1px solid #1d2739;
+      border-top: 0;
+      border-radius: 0 0 16px 16px;
+      background: #101725;
+      color: #7f8ba2;
+      font-size: 11px;
+    }
+
+    .key {
+      display: inline-block;
+      min-width: 22px;
+      margin: 0 2px;
+      padding: 3px 5px;
+      border: 1px solid #344057;
+      border-radius: 5px;
+      color: #c4cce0;
+      font-size: 10px;
+      text-align: center;
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 16px 12px; }
+      header { margin-bottom: 14px; }
+      .brand-mark { width: 36px; height: 36px; }
+      h1 { font-size: 16px; }
+      .best { padding: 7px 9px; font-size: 10px; }
+      .scoreboard { padding: 10px 14px; }
+      .name { font-size: 10px; }
+      .score { font-size: 18px; }
+      .controls { justify-content: center; text-align: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">▰</div>
+        <div>
+          <h1>PONG</h1>
+          <p class="subtitle">Un clásico. Una partida más.</p>
+        </div>
+      </div>
+      <div class="best">RÉCORD <strong id="best">0</strong></div>
+    </header>
+
+    <section class="scoreboard" aria-label="Marcador">
+      <div class="player">
+        <span class="name">PUNTOS</span>
+        <span class="score" id="player-score" aria-live="polite">0</span>
+      </div>
+      <span class="versus" id="goal-label">META: 100</span>
+      <div class="player">
+        <span class="score" id="lives" aria-live="polite">3 / 3</span>
+        <span class="name">VIDAS</span>
+      </div>
+    </section>
+
+    <div class="court-wrap">
+      <canvas id="court" aria-label="Partida de Pong. Usa las flechas o W y S para mover tu pala."></canvas>
+      <div class="overlay" id="overlay">
+        <div class="card">
+          <p class="eyebrow" id="eyebrow">3 VIDAS · META: 100</p>
+          <h2 id="message">Desbloquea la pista secreta</h2>
+          <p id="instructions">Suma 10 puntos cada vez que tu pala golpee la pelota y 40 si falla la CPU. La pelota acelera más con cada golpe. Consigue 100 puntos para desbloquear la pista secreta. Tienes 3 vidas: cada fallo te cuesta una; si las pierdes, el juego se bloquea durante 10 minutos.</p>
+          <button id="start" type="button">Empezar partida</button>
+          <form class="teacher-unlock" id="teacher-unlock" hidden>
+            <label for="teacher-code">Acceso del profesor · fecha de cumpleaños</label>
+            <input id="teacher-code" type="text" inputmode="numeric" autocomplete="off" placeholder="DD/MM/AAAA" maxlength="10">
+            <button type="submit">Desbloquear partida</button>
+            <p id="unlock-feedback" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <footer class="controls">
+      <span><span class="key">↑</span><span class="key">↓</span> o <span class="key">W</span><span class="key">S</span> mover</span>
+      <span>También puedes mover el ratón o tocar la pista</span>
+      <span><span class="key">ESPACIO</span> pausar</span>
+    </footer>
+  </main>
+
+  <!-- PISTA SIGUIENTE: ENCONTRARÁS LA SIGUIENTE PISTA ALLÍ DONDE EL ÚLTIMO MODELO DE CHATGPT SE COMBINA CON LAS SIGLAS DE NUESTRO CICLO FORMATIVO, UNIVERSO DE CONOCIMIENTO DEL MEJOR LENGUAJE DEL MUNDO (QUE NO ES PHP, CLARO). RECUERDA ESTE SEGUNDO NÚMERO: 2345. BUSCA CERCA DE DONDE APRENDIMOS A PONER ORDEN. -->
+  <script>
+    (() => {
+      const canvas = document.querySelector("#court");
+      const ctx = canvas.getContext("2d");
+      const overlay = document.querySelector("#overlay");
+      const startButton = document.querySelector("#start");
+      const teacherUnlockForm = document.querySelector("#teacher-unlock");
+      const teacherCodeInput = document.querySelector("#teacher-code");
+      const unlockFeedback = document.querySelector("#unlock-feedback");
+      const message = document.querySelector("#message");
+      const instructions = document.querySelector("#instructions");
+      const eyebrow = document.querySelector("#eyebrow");
+      const playerScoreText = document.querySelector("#player-score");
+      const livesText = document.querySelector("#lives");
+      const goalLabel = document.querySelector("#goal-label");
+      const bestText = document.querySelector("#best");
+
+      const W = 800;
+      const H = 450;
+      const TARGET_SCORE = 100;
+      const LOCKOUT_MS = 10 * 60 * 1000;
+      const LOCKOUT_KEY = "pong-lockout-until";
+      const SECRET_KEY = "pong-secret-unlocked";
+      const TEACHER_CODE = "13041973";
+      const paddle = { width: 12, height: 86, inset: 28, speed: 470 };
+      const ball = { x: W / 2, y: H / 2, radius: 8, vx: 0, vy: 0, speed: 390 };
+      const keys = new Set();
+      const player = { y: H / 2 };
+      const cpu = { y: H / 2 };
+      let playerScore = 0;
+      let lives = 3;
+      let completionShown = false;
+      let lockoutUntil = 0;
+      let secretUnlocked = false;
+      let state = "ready";
+      let lastTime = 0;
+      let serveTimer = 0;
+      let pointerY = null;
+      let best = 0;
+      let lockoutSecond = -1;
+      let lockoutPersistenceFailed = false;
+
+      try {
+        best = Number(localStorage.getItem("pong-best") || 0);
+        lockoutUntil = Number(localStorage.getItem(LOCKOUT_KEY) || 0);
+        secretUnlocked = localStorage.getItem(SECRET_KEY) === "true";
+      } catch (error) {
+        console.error("No se pudieron leer los datos guardados de Pong.", error);
+      }
+      if (!Number.isFinite(lockoutUntil)) lockoutUntil = 0;
+      if (secretUnlocked) goalLabel.textContent = "PISTA SECRETA";
+      if (lockoutUntil > Date.now()) state = "locked";
+      bestText.textContent = String(best);
+      playerScoreText.textContent = String(playerScore);
+      livesText.textContent = `${lives} / 3`;
+
+      function resizeCanvas() {
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(W * ratio);
+        canvas.height = Math.round(H * ratio);
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        draw();
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = secretUnlocked ? "#120f25" : "#0c1320";
+        ctx.fillRect(0, 0, W, H);
+
+        if (secretUnlocked) {
+          ctx.setLineDash([3, 10]);
+          ctx.strokeStyle = "rgba(197, 125, 255, .25)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.roundRect(86, 34, W - 172, H - 68, 84);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.roundRect(118, 58, W - 236, H - 116, 64);
+          ctx.stroke();
+        }
+
+        ctx.setLineDash([8, 12]);
+        ctx.strokeStyle = secretUnlocked ? "rgba(210, 155, 255, .35)" : "rgba(151, 169, 202, .18)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(W / 2, 0);
+        ctx.lineTo(W / 2, H);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.beginPath();
+        ctx.arc(W / 2, H / 2, 58, 0, Math.PI * 2);
+        ctx.strokeStyle = secretUnlocked ? "rgba(105, 240, 197, .28)" : "rgba(151, 169, 202, .1)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        drawPaddle(paddle.inset, player.y, "#69f0c5");
+        drawPaddle(W - paddle.inset - paddle.width, cpu.y, "#ff7189");
+        ctx.save();
+        ctx.shadowColor = "#f4f7ff";
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = "#f4f7ff";
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawPaddle(x, centerY, color) {
+        const y = centerY - paddle.height / 2;
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 14;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(x, y, paddle.width, paddle.height, 6);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function showOverlay(label, title, detail, buttonText) {
+        eyebrow.textContent = label;
+        message.textContent = title;
+        instructions.textContent = detail;
+        startButton.textContent = buttonText;
+        overlay.classList.remove("hidden");
+      }
+
+      function hideOverlay() {
+        overlay.classList.add("hidden");
+      }
+
+      function resetBall(direction) {
+        ball.x = W / 2;
+        ball.y = H / 2;
+        ball.vx = 0;
+        ball.vy = 0;
+        serveTimer = 0.65;
+        ball.serveDirection = direction;
+      }
+
+      function serve() {
+        const angle = (Math.random() * 0.8 - 0.4);
+        ball.vx = Math.cos(angle) * ball.speed * ball.serveDirection;
+        ball.vy = Math.sin(angle) * ball.speed;
+      }
+
+      function beginGame() {
+        if (state === "locked") return;
+        if (state === "ready") {
+          playerScore = 0;
+          lives = 3;
+          completionShown = false;
+          playerScoreText.textContent = "0";
+          livesText.textContent = "3 / 3";
+          ball.speed = 390;
+          player.y = H / 2;
+          cpu.y = H / 2;
+          resetBall(Math.random() < 0.5 ? -1 : 1);
+        }
+        state = "playing";
+        startButton.disabled = false;
+        teacherUnlockForm.hidden = true;
+        hideOverlay();
+      }
+
+      function unlockAsTeacher(event) {
+        event.preventDefault();
+        if (teacherCodeInput.value.replace(/\D/g, "") !== TEACHER_CODE) {
+          unlockFeedback.textContent = "Fecha incorrecta. Inténtalo otra vez.";
+          teacherCodeInput.select();
+          return;
+        }
+
+        state = "ready";
+        lockoutUntil = 0;
+        lockoutSecond = -1;
+        lives = 3;
+        livesText.textContent = "3 / 3";
+        startButton.disabled = false;
+        teacherUnlockForm.hidden = true;
+        unlockFeedback.textContent = "";
+        let storageError = false;
+        try {
+          localStorage.removeItem(LOCKOUT_KEY);
+        } catch (error) {
+          storageError = true;
+          console.error("No se pudo borrar el bloqueo guardado del juego.", error);
+        }
+        showOverlay("ACCESO DEL PROFESOR", "Partida desbloqueada",
+          storageError
+            ? "El bloqueo se ha levantado para esta sesión, pero el navegador no pudo borrar el registro guardado. Si recargas, podría volver a aparecer."
+            : "El bloqueo se ha levantado. Puedes volver a jugar.",
+          "Jugar");
+      }
+
+      function formatTime(milliseconds) {
+        const totalSeconds = Math.ceil(milliseconds / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      }
+
+      function updateLockoutDisplay() {
+        if (state !== "locked") return;
+        const remaining = lockoutUntil - Date.now();
+        if (remaining <= 0) {
+          state = "ready";
+          lockoutUntil = 0;
+          lockoutSecond = -1;
+          lockoutPersistenceFailed = false;
+          startButton.disabled = false;
+          teacherUnlockForm.hidden = true;
+          teacherCodeInput.value = "";
+          try {
+            localStorage.removeItem(LOCKOUT_KEY);
+          } catch (error) {
+            console.error("No se pudo borrar el bloqueo vencido.", error);
+          }
+          showOverlay("DESCANSO COMPLETADO", "¡Ya puedes volver!", "La pista y tus controles están listos para una nueva partida.", "Jugar");
+          return;
+        }
+        const remainingText = formatTime(remaining);
+        const remainingSecond = Math.ceil(remaining / 1000);
+        if (remainingSecond === lockoutSecond) return;
+        lockoutSecond = remainingSecond;
+        showOverlay("TIEMPO DE DESCANSO", "Partida bloqueada",
+          lockoutPersistenceFailed
+            ? `Has perdido tus 3 vidas. Podrás volver a jugar en ${remainingText}. No cierres esta página: el navegador no pudo guardar el bloqueo.`
+            : `Has perdido tus 3 vidas. Podrás volver a jugar en ${remainingText}.`,
+          `Bloqueado · ${remainingText}`);
+        startButton.disabled = true;
+        teacherUnlockForm.hidden = false;
+      }
+
+      function startLockout() {
+        state = "locked";
+        lockoutUntil = Date.now() + LOCKOUT_MS;
+        lockoutSecond = -1;
+        try {
+          localStorage.setItem(LOCKOUT_KEY, String(lockoutUntil));
+          updateLockoutDisplay();
+        } catch (error) {
+          lockoutPersistenceFailed = true;
+          console.error("No se pudo guardar el bloqueo de 10 minutos.", error);
+          updateLockoutDisplay();
+        }
+      }
+
+      function loseLife() {
+        lives--;
+        livesText.textContent = `${lives} / 3`;
+        if (lives <= 0) {
+          startLockout();
+          return;
+        }
+        resetBall(1);
+      }
+
+      function awardPoints(points) {
+        playerScore += points;
+        playerScoreText.textContent = String(playerScore);
+        if (playerScore > best) {
+          best = playerScore;
+          bestText.textContent = String(best);
+          try {
+            localStorage.setItem("pong-best", String(best));
+          } catch (error) {
+            console.error("No se pudo guardar el récord.", error);
+          }
+        }
+        if (playerScore >= TARGET_SCORE && !completionShown) {
+          completionShown = true;
+          if (!secretUnlocked) {
+            secretUnlocked = true;
+            goalLabel.textContent = "PISTA SECRETA";
+            try {
+              localStorage.setItem(SECRET_KEY, "true");
+            } catch (error) {
+              console.error("No se pudo guardar el desbloqueo de la pista secreta.", error);
+            }
+          }
+          state = "paused";
+          showOverlay("¡FIN DE LA PARTIDA!", "El profe te ha vacilado",
+            "No hacía falta superar el juego. La siguiente pista está en las tripas: abre el código fuente del HTML.",
+            "Continuar");
+        }
+      }
+
+      function update(dt) {
+        if (state !== "playing") return;
+
+        if (pointerY !== null) {
+          player.y += (pointerY - player.y) * Math.min(1, dt * 13);
+        } else {
+          const up = keys.has("ArrowUp") || keys.has("w") || keys.has("W");
+          const down = keys.has("ArrowDown") || keys.has("s") || keys.has("S");
+          player.y += ((down ? 1 : 0) - (up ? 1 : 0)) * paddle.speed * dt;
+        }
+        player.y = clamp(player.y, paddle.height / 2, H - paddle.height / 2);
+
+        if (serveTimer > 0) {
+          serveTimer -= dt;
+          if (serveTimer <= 0) serve();
+          return;
+        }
+
+        const cpuTarget = ball.vx > 0 ? ball.y : H / 2;
+        const cpuSpeed = Math.min(paddle.speed * 0.82, 330);
+        const cpuDelta = cpuTarget - cpu.y;
+        cpu.y += clamp(cpuDelta, -cpuSpeed * dt, cpuSpeed * dt);
+        cpu.y = clamp(cpu.y, paddle.height / 2, H - paddle.height / 2);
+
+        ball.x += ball.vx * dt;
+        ball.y += ball.vy * dt;
+
+        if (ball.y - ball.radius <= 0 && ball.vy < 0) {
+          ball.y = ball.radius;
+          ball.vy *= -1;
+        } else if (ball.y + ball.radius >= H && ball.vy > 0) {
+          ball.y = H - ball.radius;
+          ball.vy *= -1;
+        }
+
+        const playerX = paddle.inset;
+        const cpuX = W - paddle.inset - paddle.width;
+        if (ball.vx < 0 && ball.x - ball.radius <= playerX + paddle.width &&
+            ball.x > playerX && Math.abs(ball.y - player.y) <= paddle.height / 2 + ball.radius) {
+          bounceFromPaddle(player, 1);
+        } else if (ball.vx > 0 && ball.x + ball.radius >= cpuX &&
+            ball.x < cpuX + paddle.width && Math.abs(ball.y - cpu.y) <= paddle.height / 2 + ball.radius) {
+          bounceFromPaddle(cpu, -1);
+        }
+
+        if (ball.x + ball.radius < 0) loseLife();
+        else if (ball.x - ball.radius > W) {
+          awardPoints(40);
+          resetBall(-1);
+        }
+      }
+
+      function bounceFromPaddle(target, direction) {
+        const offset = clamp((ball.y - target.y) / (paddle.height / 2), -1, 1);
+        const angle = offset * Math.PI / 3;
+        ball.speed = Math.min(ball.speed * 1.06, 1050);
+        ball.vx = Math.cos(angle) * ball.speed * direction;
+        ball.vy = Math.sin(angle) * ball.speed;
+        ball.x = direction > 0
+          ? paddle.inset + paddle.width + ball.radius
+          : W - paddle.inset - paddle.width - ball.radius;
+        if (target === player) awardPoints(10);
+      }
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function frame(time) {
+        const dt = Math.min((time - lastTime) / 1000 || 0, 0.03);
+        lastTime = time;
+        if (state === "locked") updateLockoutDisplay();
+        update(dt);
+        draw();
+        requestAnimationFrame(frame);
+      }
+
+      function pointerPosition(event) {
+        const rect = canvas.getBoundingClientRect();
+        pointerY = clamp(((event.clientY - rect.top) / rect.height) * H, 0, H);
+      }
+
+      startButton.addEventListener("click", beginGame);
+      teacherUnlockForm.addEventListener("submit", unlockAsTeacher);
+      window.addEventListener("resize", resizeCanvas);
+      window.addEventListener("keydown", (event) => {
+        if (["ArrowUp", "ArrowDown", " "].includes(event.key)) event.preventDefault();
+        keys.add(event.key);
+        if (["ArrowUp", "ArrowDown", "w", "W", "s", "S"].includes(event.key)) {
+          pointerY = null;
+        }
+        if (event.code === "Space" && !event.repeat) {
+          if (state === "playing") {
+            state = "paused";
+            showOverlay("PAUSA", "Tómate un respiro", "Pulsa espacio o el botón para seguir jugando.", "Continuar");
+          } else if (state === "paused") {
+            state = "playing";
+            hideOverlay();
+          }
+        }
+        if (event.key === "Escape" && state === "playing") {
+          state = "paused";
+          showOverlay("PAUSA", "Tómate un respiro", "Pulsa espacio o el botón para seguir jugando.", "Continuar");
+        }
+      });
+      window.addEventListener("keyup", (event) => keys.delete(event.key));
+      canvas.addEventListener("pointerdown", (event) => {
+        pointerPosition(event);
+        canvas.setPointerCapture(event.pointerId);
+      });
+      canvas.addEventListener("pointermove", (event) => {
+        if (event.pointerType === "mouse" || event.buttons > 0) pointerPosition(event);
+      });
+      canvas.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse") pointerY = null;
+      });
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay && state === "paused") beginGame();
+      });
+
+      if (secretUnlocked) {
+        eyebrow.textContent = "PISTA SECRETA DESBLOQUEADA";
+        message.textContent = "¡Juega en la pista secreta!";
+        instructions.textContent = "La pista secreta está guardada. Cada golpe de tu pala suma 10 puntos.";
+      }
+      if (state === "locked") updateLockoutDisplay();
+
+      resizeCanvas();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
