@@ -389,7 +389,7 @@
         <span class="name">PUNTOS</span>
         <span class="score" id="player-score" aria-live="polite">0</span>
       </div>
-      <span class="versus" id="goal-label">META: 100</span>
+      <span class="versus" id="goal-label">META: 300 · 0/3</span>
       <div class="player">
         <span class="score" id="lives" aria-live="polite">3 / 3</span>
         <span class="name">VIDAS</span>
@@ -403,9 +403,9 @@
       </div>
       <div class="overlay" id="overlay">
         <div class="card">
-          <p class="eyebrow" id="eyebrow">3 VIDAS · META: 100</p>
+          <p class="eyebrow" id="eyebrow">3 VIDAS · META: 300</p>
           <h2 id="message">Desbloquea la pista secreta</h2>
-          <p id="instructions">Suma 10 puntos cada vez que tu pala golpee la pelota y 40 si falla la CPU. La pelota acelera más con cada golpe. Consigue 100 puntos para desbloquear la pista secreta. Tienes 3 vidas: cada fallo te cuesta una; si las pierdes, el juego se bloquea durante 10 minutos.</p>
+          <p id="instructions">Suma 10 puntos cada vez que tu pala golpee la pelota y 40 si falla la CPU. La pelota acelera más con cada golpe. Desbloquea la pista secreta al conseguir 300 puntos o al completar 3 partidas (perder tus 3 vidas en cada una). Tienes 3 vidas; si las pierdes, el juego se bloquea durante 10 minutos.</p>
           <button id="start" type="button">Empezar partida</button>
           <form class="teacher-unlock" id="teacher-unlock" hidden>
             <label for="teacher-code">Acceso del profesor · fecha (DDMMAAAA, sin barras)</label>
@@ -468,10 +468,11 @@
 
       const W = 800;
       const H = 450;
-      const TARGET_SCORE = 100;
+      const TARGET_SCORE = 300;
       const LOCKOUT_MS = 10 * 60 * 1000;
       const LOCKOUT_KEY = "pong-lockout-until";
       const SECRET_KEY = "pong-secret-unlocked";
+      const COMPLETED_GAMES_KEY = "pong-completed-games";
       const TEACHER_CODE = "13041973";
       const paddle = { width: 12, height: 86, inset: 28, speed: 470 };
       const ball = { x: W / 2, y: H / 2, radius: 8, vx: 0, vy: 0, speed: 390 };
@@ -481,6 +482,7 @@
       let playerScore = 0;
       let lives = 3;
       let completionShown = false;
+      let completedGames = 0;
       let lockoutUntil = 0;
       let secretUnlocked = false;
       let state = "ready";
@@ -490,20 +492,30 @@
       let best = 0;
       let lockoutSecond = -1;
       let lockoutPersistenceFailed = false;
+      let lockoutUnlockNotice = false;
 
       try {
         best = Number(localStorage.getItem("pong-best") || 0);
         lockoutUntil = Number(localStorage.getItem(LOCKOUT_KEY) || 0);
         secretUnlocked = localStorage.getItem(SECRET_KEY) === "true";
+        completedGames = Number(localStorage.getItem(COMPLETED_GAMES_KEY) || 0);
       } catch (error) {
         console.error("No se pudieron leer los datos guardados de Pong.", error);
       }
       if (!Number.isFinite(lockoutUntil)) lockoutUntil = 0;
-      if (secretUnlocked) goalLabel.textContent = "PISTA SECRETA";
+      if (!Number.isFinite(completedGames) || completedGames < 0) completedGames = 0;
+      completedGames = Math.floor(completedGames);
       if (lockoutUntil > Date.now()) state = "locked";
       bestText.textContent = String(best);
       playerScoreText.textContent = String(playerScore);
       livesText.textContent = `${lives} / 3`;
+      updateGoalLabel();
+
+      function updateGoalLabel() {
+        goalLabel.textContent = secretUnlocked
+          ? "PISTA SECRETA"
+          : `META: ${TARGET_SCORE} · ${Math.min(completedGames, 3)}/3`;
+      }
 
       function resizeCanvas() {
         const ratio = Math.min(window.devicePixelRatio || 1, 2);
@@ -693,6 +705,7 @@
           lockoutUntil = 0;
           lockoutSecond = -1;
           lockoutPersistenceFailed = false;
+          lockoutUnlockNotice = false;
           startButton.disabled = false;
           teacherUnlockForm.hidden = true;
           teacherCodeInput.value = "";
@@ -708,19 +721,23 @@
         const remainingSecond = Math.ceil(remaining / 1000);
         if (remainingSecond === lockoutSecond) return;
         lockoutSecond = remainingSecond;
+        const gameCompleteNotice = lockoutUnlockNotice
+          ? "Has completado 3 partidas: ¡la pista secreta está desbloqueada! "
+          : "";
         showOverlay("TIEMPO DE DESCANSO", "Partida bloqueada",
           lockoutPersistenceFailed
-            ? `Has perdido tus 3 vidas. Podrás volver a jugar en ${remainingText}. No cierres esta página: el navegador no pudo guardar el bloqueo.`
-            : `Has perdido tus 3 vidas. Podrás volver a jugar en ${remainingText}.`,
+            ? `${gameCompleteNotice}Has perdido tus 3 vidas. Podrás volver a jugar en ${remainingText}. No cierres esta página: el navegador no pudo guardar el bloqueo.`
+            : `${gameCompleteNotice}Has perdido tus 3 vidas. Podrás volver a jugar en ${remainingText}.`,
           `Bloqueado · ${remainingText}`);
         startButton.disabled = true;
         teacherUnlockForm.hidden = false;
       }
 
-      function startLockout() {
+      function startLockout(secretUnlockedByGames) {
         state = "locked";
         lockoutUntil = Date.now() + LOCKOUT_MS;
         lockoutSecond = -1;
+        lockoutUnlockNotice = secretUnlockedByGames;
         try {
           localStorage.setItem(LOCKOUT_KEY, String(lockoutUntil));
           updateLockoutDisplay();
@@ -731,11 +748,33 @@
         }
       }
 
+      function unlockSecretTrack() {
+        if (secretUnlocked) return false;
+        secretUnlocked = true;
+        updateGoalLabel();
+        try {
+          localStorage.setItem(SECRET_KEY, "true");
+        } catch (error) {
+          console.error("No se pudo guardar el desbloqueo de la pista secreta.", error);
+        }
+        return true;
+      }
+
+      if (completedGames >= 3) unlockSecretTrack();
+
       function loseLife() {
         lives--;
         livesText.textContent = `${lives} / 3`;
         if (lives <= 0) {
-          startLockout();
+          completedGames++;
+          updateGoalLabel();
+          try {
+            localStorage.setItem(COMPLETED_GAMES_KEY, String(completedGames));
+          } catch (error) {
+            console.error("No se pudo guardar el número de partidas completadas.", error);
+          }
+          const secretUnlockedByGames = completedGames >= 3 && unlockSecretTrack();
+          startLockout(secretUnlockedByGames);
           return;
         }
         resetBall(1);
@@ -755,15 +794,7 @@
         }
         if (playerScore >= TARGET_SCORE && !completionShown) {
           completionShown = true;
-          if (!secretUnlocked) {
-            secretUnlocked = true;
-            goalLabel.textContent = "PISTA SECRETA";
-            try {
-              localStorage.setItem(SECRET_KEY, "true");
-            } catch (error) {
-              console.error("No se pudo guardar el desbloqueo de la pista secreta.", error);
-            }
-          }
+          unlockSecretTrack();
           state = "paused";
           showOverlay("¡FIN DE LA PARTIDA!", "El profe te ha vacilado",
             "No hacía falta superar el juego. La siguiente pista está en las tripas: abre el código fuente del HTML.",
