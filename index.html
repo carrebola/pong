@@ -196,6 +196,8 @@
 
     .touch-controls .pause-toggle { color: #69f0c5; }
 
+    .rotate-prompt { display: none; }
+
     .key {
       display: inline-block;
       min-width: 22px;
@@ -254,6 +256,30 @@
       .touch-controls { gap: 7px; }
       .touch-controls button { min-height: 56px; font-size: 12px; }
       .controls { padding: 10px; }
+    }
+
+    @media (max-width: 700px) and (orientation: portrait) {
+      body { overflow: hidden; }
+
+      .rotate-prompt {
+        position: fixed;
+        z-index: 20;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+        background:
+          radial-gradient(ellipse at 50% 42%, rgba(32, 47, 79, .55), transparent 62%),
+          #090d18;
+        text-align: center;
+      }
+
+      .rotate-card { width: min(100%, 360px); }
+      .rotate-icon { display: block; color: #69f0c5; font-size: 46px; line-height: 1; }
+      .rotate-card h2 { margin: 18px 0 8px; font-size: 25px; letter-spacing: -.04em; }
+      .rotate-card p { margin: 0; color: #9aa8c2; font-size: 14px; line-height: 1.6; }
+      .touch-controls { display: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -323,6 +349,13 @@
       <span class="keyboard-hint"><span class="key">ESPACIO</span> pausar</span>
     </footer>
   </main>
+  <div class="rotate-prompt" role="status" aria-live="polite">
+    <div class="rotate-card">
+      <span class="rotate-icon" aria-hidden="true">↻</span>
+      <h2>Gira el móvil</h2>
+      <p>Este juego se juega en horizontal. Gira el dispositivo para continuar.</p>
+    </div>
+  </div>
   <!-- JAJAJA, NO HACIA FALTA JUGAR LA PARTIDA, SOLO HABIA QUE BUSCAR EL REPO PUBLICO U VER EL CÓDIGO FUENTE-->
   <!-- PISTA SIGUIENTE: ENCONTRARÁS LA SIGUIENTE PISTA ALLÍ DONDE EL ÚLTIMO MODELO DE CHATGPT SE COMBINA CON LAS SIGLAS DE NUESTRO CICLO FORMATIVO, UNIVERSO DE CONOCIMIENTO DEL MEJOR LENGUAJE DEL MUNDO (QUE NO ES PHP, CLARO). RECUERDA ESTE SEGUNDO NÚMERO: 2345. BUSCA CERCA DE DONDE APRENDIMOS A PONER ORDEN. -->
   <script>
