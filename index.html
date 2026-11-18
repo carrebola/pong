@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#090d18">
   <title>Pong — Una partida más</title>
   <style>
@@ -19,6 +19,7 @@
     body {
       min-width: 320px;
       min-height: 100vh;
+      min-height: 100svh;
       margin: 0;
       display: grid;
       place-items: center;
@@ -163,6 +164,38 @@
       font-size: 11px;
     }
 
+    .touch-controls,
+    .touch-hint { display: none; }
+
+    .touch-controls {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .touch-controls button {
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 6px;
+      border: 1px solid #2c3a52;
+      background: #152034;
+      color: #e2e9f8;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .touch-controls button:active {
+      transform: scale(.97);
+      background: #20304a;
+    }
+
+    .touch-controls .pause-toggle { color: #69f0c5; }
+
     .key {
       display: inline-block;
       min-width: 22px;
@@ -175,16 +208,52 @@
       text-align: center;
     }
 
+    @media (max-width: 700px), (pointer: coarse) {
+      body {
+        display: block;
+        padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+          max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      }
+
+      .game { margin: 0 auto; }
+      .touch-controls { display: grid; }
+
+      .overlay {
+        position: fixed;
+        z-index: 5;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+      }
+
+      .card {
+        width: min(100%, 440px);
+        max-width: none;
+        margin: auto;
+      }
+
+      .touch-hint { display: inline; }
+      .keyboard-hint { display: none; }
+      .controls { justify-content: center; text-align: center; }
+    }
+
     @media (max-width: 520px) {
-      body { padding: 16px 12px; }
-      header { margin-bottom: 14px; }
+      header { margin-bottom: 12px; }
+      .brand { gap: 9px; }
       .brand-mark { width: 36px; height: 36px; }
       h1 { font-size: 16px; }
       .best { padding: 7px 9px; font-size: 10px; }
-      .scoreboard { padding: 10px 14px; }
-      .name { font-size: 10px; }
-      .score { font-size: 18px; }
-      .controls { justify-content: center; text-align: center; }
+      .scoreboard { padding: 10px 11px; }
+      .player { gap: 6px; }
+      .name { font-size: 9px; }
+      .score { font-size: 17px; }
+      .versus { font-size: 9px; letter-spacing: .08em; }
+      .touch-controls { gap: 7px; }
+      .touch-controls button { min-height: 56px; font-size: 12px; }
+      .controls { padding: 10px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -218,7 +287,7 @@
     </section>
 
     <div class="court-wrap">
-      <canvas id="court" aria-label="Partida de Pong. Usa las flechas o W y S para mover tu pala."></canvas>
+      <canvas id="court" aria-label="Partida de Pong. Desliza por la pista o usa los controles táctiles para mover tu pala."></canvas>
       <div class="overlay" id="overlay">
         <div class="card">
           <p class="eyebrow" id="eyebrow">3 VIDAS · META: 100</p>
@@ -235,10 +304,23 @@
       </div>
     </div>
 
+    <div class="touch-controls" aria-label="Controles táctiles">
+      <button id="move-up" type="button" aria-label="Subir la pala">
+        <span aria-hidden="true">▲</span><span>Subir</span>
+      </button>
+      <button id="move-down" type="button" aria-label="Bajar la pala">
+        <span aria-hidden="true">▼</span><span>Bajar</span>
+      </button>
+      <button id="pause-toggle" class="pause-toggle" type="button" aria-label="Pausar la partida">
+        <span aria-hidden="true">Ⅱ</span><span>Pausa</span>
+      </button>
+    </div>
+
     <footer class="controls">
-      <span><span class="key">↑</span><span class="key">↓</span> o <span class="key">W</span><span class="key">S</span> mover</span>
+      <span class="keyboard-hint"><span class="key">↑</span><span class="key">↓</span> o <span class="key">W</span><span class="key">S</span> mover</span>
+      <span class="touch-hint">Mantén pulsado Subir/Bajar o desliza en la pista</span>
       <span>También puedes mover el ratón o tocar la pista</span>
-      <span><span class="key">ESPACIO</span> pausar</span>
+      <span class="keyboard-hint"><span class="key">ESPACIO</span> pausar</span>
     </footer>
   </main>
   <!-- JAJAJA, NO HACIA FALTA JUGAR LA PARTIDA, SOLO HABIA QUE BUSCAR EL REPO PUBLICO U VER EL CÓDIGO FUENTE-->
@@ -249,6 +331,9 @@
       const ctx = canvas.getContext("2d");
       const overlay = document.querySelector("#overlay");
       const startButton = document.querySelector("#start");
+      const moveUpButton = document.querySelector("#move-up");
+      const moveDownButton = document.querySelector("#move-down");
+      const pauseToggle = document.querySelector("#pause-toggle");
       const teacherUnlockForm = document.querySelector("#teacher-unlock");
       const teacherCodeInput = document.querySelector("#teacher-code");
       const unlockFeedback = document.querySelector("#unlock-feedback");
@@ -404,9 +489,42 @@
           resetBall(Math.random() < 0.5 ? -1 : 1);
         }
         state = "playing";
+        setPauseButton(false);
         startButton.disabled = false;
         teacherUnlockForm.hidden = true;
         hideOverlay();
+      }
+
+      function setPauseButton(paused) {
+        pauseToggle.children[0].textContent = paused ? "▶" : "Ⅱ";
+        pauseToggle.children[1].textContent = paused ? "Seguir" : "Pausa";
+        pauseToggle.setAttribute("aria-label", paused ? "Reanudar la partida" : "Pausar la partida");
+      }
+
+      function togglePause() {
+        if (state === "playing") {
+          state = "paused";
+          setPauseButton(true);
+          showOverlay("PAUSA", "Tómate un respiro", "Pulsa continuar para seguir jugando.", "Continuar");
+        } else if (state === "paused") {
+          state = "playing";
+          setPauseButton(false);
+          hideOverlay();
+        }
+      }
+
+      function bindHoldButton(button, key) {
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          pointerY = null;
+          keys.add(key);
+          button.setPointerCapture(event.pointerId);
+        });
+        const release = () => keys.delete(key);
+        button.addEventListener("pointerup", release);
+        button.addEventListener("pointercancel", release);
+        button.addEventListener("lostpointercapture", release);
+        button.addEventListener("contextmenu", (event) => event.preventDefault());
       }
 
       function unlockAsTeacher(event) {
@@ -615,6 +733,9 @@
       }
 
       startButton.addEventListener("click", beginGame);
+      bindHoldButton(moveUpButton, "ArrowUp");
+      bindHoldButton(moveDownButton, "ArrowDown");
+      pauseToggle.addEventListener("click", togglePause);
       teacherUnlockForm.addEventListener("submit", unlockAsTeacher);
       window.addEventListener("resize", resizeCanvas);
       window.addEventListener("keydown", (event) => {
@@ -624,20 +745,14 @@
           pointerY = null;
         }
         if (event.code === "Space" && !event.repeat) {
-          if (state === "playing") {
-            state = "paused";
-            showOverlay("PAUSA", "Tómate un respiro", "Pulsa espacio o el botón para seguir jugando.", "Continuar");
-          } else if (state === "paused") {
-            state = "playing";
-            hideOverlay();
-          }
+          togglePause();
         }
         if (event.key === "Escape" && state === "playing") {
-          state = "paused";
-          showOverlay("PAUSA", "Tómate un respiro", "Pulsa espacio o el botón para seguir jugando.", "Continuar");
+          togglePause();
         }
       });
       window.addEventListener("keyup", (event) => keys.delete(event.key));
+      window.addEventListener("blur", () => keys.clear());
       canvas.addEventListener("pointerdown", (event) => {
         pointerPosition(event);
         canvas.setPointerCapture(event.pointerId);
