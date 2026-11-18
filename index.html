@@ -295,8 +295,8 @@
           <p id="instructions">Suma 10 puntos cada vez que tu pala golpee la pelota y 40 si falla la CPU. La pelota acelera más con cada golpe. Consigue 100 puntos para desbloquear la pista secreta. Tienes 3 vidas: cada fallo te cuesta una; si las pierdes, el juego se bloquea durante 10 minutos.</p>
           <button id="start" type="button">Empezar partida</button>
           <form class="teacher-unlock" id="teacher-unlock" hidden>
-            <label for="teacher-code">Acceso del profesor · fecha de cumpleaños</label>
-            <input id="teacher-code" type="text" inputmode="numeric" autocomplete="off" placeholder="DD/MM/AAAA" maxlength="10">
+            <label for="teacher-code">Acceso del profesor · fecha (DDMMAAAA, sin barras)</label>
+            <input id="teacher-code" type="text" inputmode="numeric" autocomplete="off" placeholder="DDMMAAAA" maxlength="8">
             <button type="submit">Desbloquear partida</button>
             <p id="unlock-feedback" role="status" aria-live="polite"></p>
           </form>
